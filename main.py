@@ -77,6 +77,7 @@ class Enemy:
         self.rect = self.image.get_rect(
             center=(random.randint(40, WIDTH-40), -40))
         self.speed = random.randint(2, 5)
+        self.dead = False  # bandera para marcar si fue destruido
 
     def update(self):
         self.rect.y += self.speed
@@ -183,27 +184,41 @@ def game():
 
         # Enemigos
         for enemy in enemies[:]:
+            if enemy.dead:
+                enemies.remove(enemy)
+                continue
+
             enemy.update()
 
+            # Si sale por abajo simplemente desaparece, SIN restar vida
             if enemy.rect.top > HEIGHT:
-                enemies.remove(enemy)
-                player.lives -= 1
+                enemy.dead = True
+                continue
 
-            # Colisión con jugador
-            if enemy.rect.colliderect(player.rect):
-                explosion_sound.play()
-                explosions.append(Explosion(player.rect.centerx, player.rect.centery))
-                return score
-
-            # Colisión con balas
+            # Colisión con balas: el enemigo muere, se suma puntaje
+            hit_by_bullet = False
             for bullet in bullets[:]:
                 if enemy.rect.colliderect(bullet.rect):
                     explosion_sound.play()
                     explosions.append(Explosion(enemy.rect.centerx, enemy.rect.centery))
-                    enemies.remove(enemy)
                     bullets.remove(bullet)
+                    enemy.dead = True
                     score += 10
+                    hit_by_bullet = True
                     break
+
+            if hit_by_bullet:
+                continue
+
+            # Colisión con jugador: se resta una vida y el enemigo desaparece
+            if enemy.rect.colliderect(player.rect):
+                explosion_sound.play()
+                explosions.append(Explosion(player.rect.centerx, player.rect.centery))
+                enemy.dead = True
+                player.lives -= 1
+
+        # Limpiar enemigos muertos
+        enemies = [e for e in enemies if not e.dead]
 
         # Explosiones
         for exp in explosions[:]:
